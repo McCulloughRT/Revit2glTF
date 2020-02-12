@@ -97,9 +97,7 @@ namespace glTFRevitExport
         /// t or f is also accepted. Return false if no 
         /// valid Boolean value can be extracted.
         /// </summary>
-        public static bool GetTrueOrFalse(
-          string s,
-          out bool val)
+        public static bool GetTrueOrFalse(string s, out bool val)
         {
             val = false;
 

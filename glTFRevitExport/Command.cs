@@ -11,12 +11,12 @@ namespace glTFRevitExport
     [Transaction(TransactionMode.Manual)]
     class Command : IExternalCommand
     {
-        public void ExportView3D(View3D view3d, bool flipCoords, string filename, string directory)
+        public void ExportView3D(View3D view3d, bool exportProperties, bool flipCoords, string filename, string directory)
         {
             Document doc = view3d.Document;
 
             // Use our custom implementation of IExportContext as the exporter context.
-            glTFExportContext ctx = new glTFExportContext(doc, flipCoords, filename, directory);
+            glTFExportContext ctx = new glTFExportContext(doc, exportProperties, flipCoords, filename, directory);
             // Create a new custom exporter with the context.
             CustomExporter exporter = new CustomExporter(doc, ctx);
 
@@ -48,7 +48,7 @@ namespace glTFRevitExport
                 string filename = fileDialog.FileName;
                 string directory = Path.GetDirectoryName(filename) + "\\";
 
-                ExportView3D(view, true, filename, directory);
+                ExportView3D(view, true, true, filename, directory);
             }
 
             return Result.Succeeded;

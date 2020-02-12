@@ -17,6 +17,10 @@ namespace glTFRevitExport
         /// Flag to write coords as Z up instead of Y up (if true).
         /// </summary>
         private bool _flipCoords;
+        /// <summary>
+        /// Flag to export all the properties for each element.
+        /// </summary>
+        private bool _exportProperties;
 
         /// <summary>
         /// The name for the .gltf file.
@@ -95,9 +99,10 @@ namespace glTFRevitExport
         private Stack<Transform> _transformStack = new Stack<Transform>();
         private Transform CurrentTransform { get { return _transformStack.Peek(); } }
 
-        public glTFExportContext(Document doc, bool flipCoords, string filename, string directory)
+        public glTFExportContext(Document doc, bool exportProperties, bool flipCoords, string filename, string directory)
         {
             _doc = doc;
+            _exportProperties = exportProperties;
             _flipCoords = flipCoords;
             _filename = filename;
             _directory = directory;
@@ -200,9 +205,19 @@ namespace glTFRevitExport
             glTFNode newNode = new glTFNode();
             newNode.name = Util.ElementDescription(e);
             newNode.matrix = new List<float>() { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
-            Nodes.AddOrUpdateCurrent(e.UniqueId, newNode);
-            // add the index of this node to our root node children array
-            rootNode.children.Add(Nodes.CurrentIndex);
+
+            if (_exportProperties)
+            {
+                // get the extras for this element
+                glTFExtras extras = new glTFExtras();
+                extras.UniqueId = e.UniqueId;
+                extras.Properties = Util.GetElementProperties(e, true);
+                newNode.extras = extras;
+
+                Nodes.AddOrUpdateCurrent(e.UniqueId, newNode);
+                // add the index of this node to our root node children array
+                rootNode.children.Add(Nodes.CurrentIndex);
+            }
 
             // create a new mesh for the node (we're assuming 1 mesh per node w/ multiple primatives on mesh)
             glTFMesh newMesh = new glTFMesh();

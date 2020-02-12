@@ -246,5 +246,6 @@ namespace glTFRevitExport
         /// The Revit created UniqueId for this object
         /// </summary>
         public string UniqueId { get; set; }
+        public Dictionary<string, string> Properties { get; set; }
     }
 }
