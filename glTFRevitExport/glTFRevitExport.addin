@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Command">
+    <Text>Command glTFRevitExport</Text>
+    <Description>Some description for glTFRevitExport</Description>
+    <Assembly>glTFRevitExport.dll</Assembly>
+    <FullClassName>glTFRevitExport.Command</FullClassName>
+    <ClientId>38555A79-E66E-49B6-8278-191F17E931B2</ClientId>
+    <VendorId>_RTM</VendorId>
+    <VendorDescription>Ryan T. McCullough</VendorDescription>
+  </AddIn>
+  <AddIn Type="Application">
+    <Name>Application glTFRevitExport</Name>
+    <Assembly>glTFRevitExport.dll</Assembly>
+    <FullClassName>glTFRevitExport.App</FullClassName>
+    <ClientId>DBBCC867-53D7-4B55-A620-88637AD9CC7E</ClientId>
+    <VendorId>_RTM</VendorId>
+    <VendorDescription>Ryan T. McCullough</VendorDescription>
+  </AddIn>
+</RevitAddIns>

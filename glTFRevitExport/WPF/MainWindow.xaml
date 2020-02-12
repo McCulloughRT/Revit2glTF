@@ -1,0 +1,9 @@
+﻿<Window x:Class="glTFRevitExport.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MainWindow" Height="350" Width="525" Background="#FFF0EFEE">
+    <Grid>
+        <Button x:Name="btnOk" Content="OK" HorizontalAlignment="Left" Margin="432,288,0,0" VerticalAlignment="Top" Width="75"/>
+
+    </Grid>
+</Window>
