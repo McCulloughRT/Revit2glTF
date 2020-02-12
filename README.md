@@ -3,6 +3,7 @@ This is currently a work in progress but the end goal is to create an open sourc
 
 ## Current To-Do's
 - Handle material export
+- Handle normals export
 - Add option to export colors only, or full Autodesk materials.
 - Add toggle for exporting each element as a seperate .bin vs a single .glb.
 - Add element properties to extension on glTF nodes.
