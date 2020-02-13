@@ -21,6 +21,10 @@ namespace glTFRevitExport
         /// Flag to export all the properties for each element.
         /// </summary>
         private bool _exportProperties;
+        /// <summary>
+        /// Flag to export all buffers into a single .bin file (if true).
+        /// </summary>
+        private bool _singleBinary;
 
         /// <summary>
         /// The name for the .gltf file.
@@ -99,11 +103,12 @@ namespace glTFRevitExport
         private Stack<Transform> _transformStack = new Stack<Transform>();
         private Transform CurrentTransform { get { return _transformStack.Peek(); } }
 
-        public glTFExportContext(Document doc, bool exportProperties, bool flipCoords, string filename, string directory)
+        public glTFExportContext(Document doc, string filename, string directory, bool singleBinary = true, bool exportProperties = true, bool flipCoords = true)
         {
             _doc = doc;
             _exportProperties = exportProperties;
             _flipCoords = flipCoords;
+            _singleBinary = singleBinary;
             _filename = filename;
             _directory = directory;
         }
@@ -146,6 +151,52 @@ namespace glTFRevitExport
         {
             Debug.WriteLine("Finishing...");
 
+            if (_singleBinary)
+            {
+                int bytePosition = 0;
+                int currentBuffer = 0;
+                foreach (var view in BufferViews)
+                {
+                    if (view.buffer == 0)
+                    {
+                        bytePosition += view.byteLength;
+                        continue;
+                    }
+
+                    if (view.buffer != currentBuffer)
+                    {
+                        view.buffer = 0;
+                        view.byteOffset = bytePosition;
+                        bytePosition += view.byteLength;
+                    }
+                }
+
+                glTFBuffer buffer = new glTFBuffer();
+                buffer.uri = "monobuffer.bin";
+                buffer.byteLength = bytePosition;
+                Buffers.Clear();
+                Buffers.Add(buffer);
+
+                using (FileStream f = File.Create(_directory + "monobuffer.bin"))
+                {
+                    using (BinaryWriter writer = new BinaryWriter(f))
+                    {
+                        foreach (var bin in binaryFileData)
+                        {
+                            foreach (var coord in bin.vertexBuffer)
+                            {
+                                writer.Write((float)coord);
+                            }
+                            // TODO: add writer for normals buffer
+                            foreach (var index in bin.indexBuffer)
+                            {
+                                writer.Write((int)index);
+                            }
+                        }
+                    }
+                }
+            }
+
             // Package the properties into a serializable container
             glTF model = new glTF();
             model.asset = new glTFVersion();
@@ -161,21 +212,24 @@ namespace glTFRevitExport
             string serializedModel = JsonConvert.SerializeObject(model, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
             File.WriteAllText(_filename, serializedModel);
 
-            // Write the *.bin files
-            foreach (var bin in binaryFileData)
+            if (!_singleBinary)
             {
-                using (FileStream f = File.Create(_directory + bin.name))
+                // Write the *.bin files
+                foreach (var bin in binaryFileData)
                 {
-                    using (BinaryWriter writer = new BinaryWriter(f))
+                    using (FileStream f = File.Create(_directory + bin.name))
                     {
-                        foreach (var coord in bin.vertexBuffer)
+                        using (BinaryWriter writer = new BinaryWriter(f))
                         {
-                            writer.Write((float)coord);
-                        }
-                        // TODO: add writer for normals buffer
-                        foreach (var index in bin.indexBuffer)
-                        {
-                            writer.Write((int)index);
+                            foreach (var coord in bin.vertexBuffer)
+                            {
+                                writer.Write((float)coord);
+                            }
+                            // TODO: add writer for normals buffer
+                            foreach (var index in bin.indexBuffer)
+                            {
+                                writer.Write((int)index);
+                            }
                         }
                     }
                 }
@@ -413,6 +467,9 @@ namespace glTFRevitExport
             Buffers.Add(buffer);
             int bufferIdx = Buffers.Count - 1;
 
+            /**
+             * Buffer Data
+             **/
             glTFBinaryData bufferData = new glTFBinaryData();
             bufferData.name = buffer.uri;
             foreach (var coord in geomData.vertices)
@@ -437,6 +494,9 @@ namespace glTFRevitExport
             // Get max and min for normal data
             //float[] normalMinMax = getVec3MinMax(bufferData.normalBuffer);
 
+            /**
+             * BufferViews
+             **/
             // Add a vec3 buffer view
             int elementsPerVertex = 3;
             int bytesPerElement = 4;
@@ -469,6 +529,9 @@ namespace glTFRevitExport
 
             Buffers[bufferIdx].byteLength = vec3View.byteLength + facesView.byteLength;
 
+            /**
+             * Accessors
+             **/
             // add a position accessor
             glTFAccessor positionAccessor = new glTFAccessor();
             positionAccessor.bufferView = vec3ViewIdx;
