@@ -95,11 +95,11 @@ namespace glTFRevitExport
         /// <summary>
         /// A floating-point 4x4 transformation matrix stored in column major order.
         /// </summary>
-        public List<float> matrix { get; set; } = new List<float>();
+        public List<float> matrix { get; set; }
         /// <summary>
         /// The indices of this node's children.
         /// </summary>
-        public List<int> children { get; set; } = new List<int>();
+        public List<int> children { get; set; }
         /// <summary>
         /// The extras describing this node.
         /// </summary>
