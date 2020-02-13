@@ -273,13 +273,6 @@ namespace glTFRevitExport
                 rootNode.children.Add(Nodes.CurrentIndex);
             }
 
-            // create a new mesh for the node (we're assuming 1 mesh per node w/ multiple primatives on mesh)
-            glTFMesh newMesh = new glTFMesh();
-            newMesh.primitives = new List<glTFMeshPrimitive>();
-            Meshes.AddOrUpdateCurrent(e.UniqueId, newMesh);
-            // add the index of this mesh to the current node.
-            Nodes.CurrentItem.mesh = Meshes.CurrentIndex;
-
             // Reset _currentGeometry for new element
             _currentGeometry = new IndexedDictionary<GeometryData>();
             _currentVertices = new IndexedDictionary<VertexLookupInt>();
@@ -392,6 +385,21 @@ namespace glTFRevitExport
                 _skipElementFlag = false;
                 return;
             }
+
+            if (_currentVertices.List.Count == 0)
+            {
+                return;
+            }
+
+            Element e = _doc.GetElement(elementId);
+
+            // create a new mesh for the node (we're assuming 1 mesh per node w/ multiple primatives on mesh)
+            glTFMesh newMesh = new glTFMesh();
+            newMesh.primitives = new List<glTFMeshPrimitive>();
+            Meshes.AddOrUpdateCurrent(e.UniqueId, newMesh);
+
+            // add the index of this mesh to the current node.
+            Nodes.CurrentItem.mesh = Meshes.CurrentIndex;
 
             // Add vertex data to _currentGeometry for each geometry/material pairing
             foreach (KeyValuePair<string,VertexLookupInt> kvp in _currentVertices.Dict)
