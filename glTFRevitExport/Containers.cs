@@ -11,7 +11,7 @@ namespace glTFRevitExport
     /// </summary>
     class GeometryData
     {
-        public List<double> vertices = new List<double>();
+        public List<long> vertices = new List<long>();
         public List<double> normals = new List<double>();
         public List<double> uvs = new List<double>();
         public List<int> faces = new List<int>();
@@ -39,22 +39,6 @@ namespace glTFRevitExport
                 return output;
             }
         }
-
-        ///// <summary>
-        ///// Index of the last item in the list.
-        ///// </summary>
-        //public int LastIndex
-        //{
-        //    get { return List.Count == 0 ? 0 : List.Count - 1; }
-        //}
-
-        ///// <summary>
-        ///// The last item in the list.
-        ///// </summary>
-        //public T LastItem
-        //{
-        //    get { return List.Last(); }
-        //}
 
         /// <summary>
         /// The most recently accessed item (not effected by GetElement()).

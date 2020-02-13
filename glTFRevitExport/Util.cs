@@ -1,37 +1,77 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Autodesk.Revit.DB;
 
 namespace glTFRevitExport
 {
     class Util
     {
-        public static float[] GetVec3MinMax(List<float> vec3)
+        public static int[] GetVec3MinMax(List<int> vec3)
         {
-            float minVertexX = float.MaxValue;
-            float minVertexY = float.MaxValue;
-            float minVertexZ = float.MaxValue;
-            float maxVertexX = float.MinValue;
-            float maxVertexY = float.MinValue;
-            float maxVertexZ = float.MinValue;
+            int minVertexX = int.MaxValue;
+            int minVertexY = int.MaxValue;
+            int minVertexZ = int.MaxValue;
+            int maxVertexX = int.MinValue;
+            int maxVertexY = int.MinValue;
+            int maxVertexZ = int.MinValue;
             for (int i = 0; i < (vec3.Count / 3); i += 3)
             {
-                //float currentMinX = Math.Min(minVertexX, vec3[i]);
-                //float currentMaxX = Math.Max(maxVertexX, vec3[i]);
                 if (vec3[i] < minVertexX) minVertexX = vec3[i];
                 if (vec3[i] > maxVertexX) maxVertexX = vec3[i];
 
-                //float currentMinY = Math.Min(minVertexY, vec3[i + 1]);
-                //float currentMaxY = Math.Max(maxVertexY, vec3[i + 1]);
                 if (vec3[i + 1] < minVertexY) minVertexY = vec3[i + 1];
                 if (vec3[i + 1] > maxVertexY) maxVertexY = vec3[i + 1];
 
-                //float currentMinZ = Math.Min(minVertexZ, vec3[i + 2]);
-                //float currentMaxZ = Math.Max(maxVertexZ, vec3[i + 2]);
                 if (vec3[i + 2] < minVertexZ) minVertexZ = vec3[i + 2];
                 if (vec3[i + 2] > maxVertexZ) maxVertexZ = vec3[i + 2];
             }
-            return new float[] { minVertexX, maxVertexX, minVertexY, maxVertexY, minVertexZ, maxVertexZ };
+            return new int[] { minVertexX, maxVertexX, minVertexY, maxVertexY, minVertexZ, maxVertexZ };
+        }
+
+        public static long[] GetVec3MinMax(List<long> vec3)
+        {
+            long minVertexX = long.MaxValue;
+            long minVertexY = long.MaxValue;
+            long minVertexZ = long.MaxValue;
+            long maxVertexX = long.MinValue;
+            long maxVertexY = long.MinValue;
+            long maxVertexZ = long.MinValue;
+            for (int i = 0; i < (vec3.Count / 3); i += 3)
+            {
+                if (vec3[i] < minVertexX) minVertexX = vec3[i];
+                if (vec3[i] > maxVertexX) maxVertexX = vec3[i];
+
+                if (vec3[i + 1] < minVertexY) minVertexY = vec3[i + 1];
+                if (vec3[i + 1] > maxVertexY) maxVertexY = vec3[i + 1];
+
+                if (vec3[i + 2] < minVertexZ) minVertexZ = vec3[i + 2];
+                if (vec3[i + 2] > maxVertexZ) maxVertexZ = vec3[i + 2];
+            }
+            return new long[] { minVertexX, maxVertexX, minVertexY, maxVertexY, minVertexZ, maxVertexZ };
+        }
+
+        public static float[] GetVec3MinMax(List<float> vec3)
+        {
+            
+            List<float> xValues = new List<float>();
+            List<float> yValues = new List<float>();
+            List<float> zValues = new List<float>();
+            for (int i = 0; i < vec3.Count; i++)
+            {
+                if ((i % 3) == 0) xValues.Add(vec3[i]);
+                if ((i % 3) == 1) yValues.Add(vec3[i]);
+                if ((i % 3) == 2) zValues.Add(vec3[i]);
+            }
+
+            float maxX = xValues.Max();
+            float minX = xValues.Min();
+            float maxY = yValues.Max();
+            float minY = yValues.Min();
+            float maxZ = zValues.Max();
+            float minZ = zValues.Min();
+
+            return new float[] { minX, maxX, minY, maxY, minZ, maxZ };
         }
 
         public static int[] GetScalarMinMax(List<int> scalars)

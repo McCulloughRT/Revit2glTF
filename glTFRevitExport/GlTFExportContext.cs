@@ -126,13 +126,13 @@ namespace glTFRevitExport
             float scale = 1f; // could play with this to match units in a different viewer.
             rootNode = new glTFNode();
             rootNode.name = "rootNode";
-            rootNode.matrix = new List<float>()
-            {
-                scale, 0, 0, 0,
-                0, scale, 0, 0,
-                0, 0, scale, 0,
-                0, 0, 0, scale
-            };
+            //rootNode.matrix = new List<float>()
+            //{
+            //    scale, 0, 0, 0,
+            //    0, scale, 0, 0,
+            //    0, 0, scale, 0,
+            //    0, 0, 0, scale
+            //};
             rootNode.children = new List<int>();
             Nodes.AddOrUpdateCurrent("rootNode", rootNode);
 
@@ -258,7 +258,7 @@ namespace glTFRevitExport
             // create a new node for the element
             glTFNode newNode = new glTFNode();
             newNode.name = Util.ElementDescription(e);
-            newNode.matrix = new List<float>() { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+            //newNode.matrix = new List<float>() { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
 
             if (_exportProperties)
             {
@@ -474,7 +474,8 @@ namespace glTFRevitExport
             bufferData.name = buffer.uri;
             foreach (var coord in geomData.vertices)
             {
-                bufferData.vertexBuffer.Add((float)coord);
+                float vFloat = Convert.ToSingle(coord);
+                bufferData.vertexBuffer.Add(vFloat);
             }
             foreach (var index in geomData.faces)
             {
