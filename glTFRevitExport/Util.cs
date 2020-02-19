@@ -15,7 +15,7 @@ namespace glTFRevitExport
             int maxVertexX = int.MinValue;
             int maxVertexY = int.MinValue;
             int maxVertexZ = int.MinValue;
-            for (int i = 0; i < (vec3.Count / 3); i += 3)
+            for (int i = 0; i < vec3.Count; i += 3)
             {
                 if (vec3[i] < minVertexX) minVertexX = vec3[i];
                 if (vec3[i] > maxVertexX) maxVertexX = vec3[i];
