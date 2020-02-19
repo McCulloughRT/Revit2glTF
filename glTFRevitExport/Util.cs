@@ -230,6 +230,9 @@ namespace glTFRevitExport
 
             Dictionary<string, string> a = new Dictionary<string, string>(parameters.Count);
 
+            // Add element category
+            a.Add("Element Category", e.Category.Name);
+
             string key;
             string val;
 
