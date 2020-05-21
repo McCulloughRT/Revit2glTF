@@ -246,6 +246,14 @@ namespace glTFRevitExport
         /// The Revit created UniqueId for this object
         /// </summary>
         public string UniqueId { get; set; }
+        public GridParameters GridParameters { get; set; }
         public Dictionary<string, string> Properties { get; set; }
+    }
+
+    public class GridParameters
+    {
+        public List<double> origin { get; set; }
+        public List<double> direction { get; set; }
+        public double length { get; set; }
     }
 }
