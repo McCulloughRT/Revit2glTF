@@ -151,6 +151,41 @@ namespace glTFRevitExport
         {
             Debug.WriteLine("Finishing...");
 
+            // TODO: [RM] Standardize what non glTF spec elements will go into
+            // this "BIM glTF superset" and write a spec for it. Gridlines below
+            // are an example.
+
+            // Add gridlines as gltf nodes in the format:
+            // Origin {Vec3<double>}, Direction {Vec3<double>}, Length {double}
+            FilteredElementCollector col = new FilteredElementCollector(_doc)
+                .OfClass(typeof(Grid));
+
+            var grids = col.ToElements();
+            foreach (Grid g in grids)
+            {
+                Line l = g.Curve as Line;
+
+                var origin = l.Origin;
+                var direction = l.Direction;
+                var length = l.Length;
+
+                var xtras = new glTFExtras();
+                var grid = new GridParameters();
+                grid.origin = new List<double>() { origin.X, origin.Y, origin.Z };
+                grid.direction = new List<double>() { direction.X, direction.Y, direction.Z };
+                grid.length = length;
+                xtras.GridParameters = grid;
+                xtras.UniqueId = g.UniqueId;
+                xtras.Properties = Util.GetElementProperties(g, true);
+
+                var gridNode = new glTFNode();
+                gridNode.name = g.Name;
+                gridNode.extras = xtras;
+
+                Nodes.AddOrUpdateCurrent(g.UniqueId, gridNode);
+                rootNode.children.Add(Nodes.CurrentIndex);
+            }
+
             if (_singleBinary)
             {
                 int bytePosition = 0;
