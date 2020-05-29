@@ -354,8 +354,7 @@ namespace glTFRevitExport
                 // I'm really not sure what situation this gets triggered in?
                 // make your own damn material!
                 // (currently this is equivalent to above until I understand BlinnPhong/PBR conversion better)
-                string uuid = Guid.NewGuid().ToString();
-
+                string uuid = string.Format("r{0}g{1}b{2}", node.Color.Red.ToString(), node.Color.Green.ToString(), node.Color.Blue.ToString());
                 // construct the material
                 matName = string.Format("MaterialNode_{0}_{1}", Util.ColorToInt(node.Color), Util.RealString(node.Transparency * 100));
                 gl_mat.name = matName;
