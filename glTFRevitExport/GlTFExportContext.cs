@@ -5,6 +5,9 @@ using System.IO;
 using Autodesk.Revit.DB;
 using Newtonsoft.Json;
 using System.Diagnostics;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace glTFRevitExport
 {
@@ -15,8 +18,13 @@ namespace glTFRevitExport
 
         /// <summary>
         /// Flag to write coords as Z up instead of Y up (if true).
+        /// CAUTION: With local coordinate systems and transforms, this no longer
+        /// produces expected results. TODO on fixing it, however there is a larger
+        /// philisophical debtate to be had over whether flipping coordinates in
+        /// source CAD applications should EVER be the correct thing to do (as opposed to
+        /// flipping the camera in the viewer).
         /// </summary>
-        private bool _flipCoords;
+        private bool _flipCoords = false;
         /// <summary>
         /// Flag to export all the properties for each element.
         /// </summary>
@@ -52,7 +60,7 @@ namespace glTFRevitExport
         /// <summary>
         /// Stateful, uuid indexable list for all meshes in the export.
         /// </summary>
-        public IndexedDictionary<glTFMesh> Meshes { get; } = new IndexedDictionary<glTFMesh>();
+        public IndexedDictionary<MeshContainer> Meshes { get; } = new IndexedDictionary<MeshContainer>();
         /// <summary>
         /// Stateful, uuid indexable list for all materials in the export.
         /// </summary>
@@ -103,11 +111,11 @@ namespace glTFRevitExport
         private Stack<Transform> _transformStack = new Stack<Transform>();
         private Transform CurrentTransform { get { return _transformStack.Peek(); } }
 
-        public glTFExportContext(Document doc, string filename, string directory, bool singleBinary = true, bool exportProperties = true, bool flipCoords = true)
+        public glTFExportContext(Document doc, string filename, string directory, bool singleBinary = true, bool exportProperties = true)
         {
             _doc = doc;
             _exportProperties = exportProperties;
-            _flipCoords = flipCoords;
+            //_flipCoords = flipCoords;
             _singleBinary = singleBinary;
             _filename = filename;
             _directory = directory;
@@ -218,12 +226,12 @@ namespace glTFRevitExport
                     {
                         foreach (var bin in binaryFileData)
                         {
-                            foreach (var coord in bin.vertexBuffer)
+                            foreach (var coord in bin.contents.vertexBuffer)
                             {
                                 writer.Write((float)coord);
                             }
                             // TODO: add writer for normals buffer
-                            foreach (var index in bin.indexBuffer)
+                            foreach (var index in bin.contents.indexBuffer)
                             {
                                 writer.Write((int)index);
                             }
@@ -233,11 +241,17 @@ namespace glTFRevitExport
             }
 
             // Package the properties into a serializable container
+            List<glTFMesh> meshes = new List<glTFMesh>();
+            for (int i = 0; i < Meshes.List.Count; i++)
+            {
+                meshes.Add(Meshes.List[i].contents);
+            }
+
             glTF model = new glTF();
             model.asset = new glTFVersion();
             model.scenes = Scenes;
             model.nodes = Nodes.List;
-            model.meshes = Meshes.List;
+            model.meshes = meshes;
             model.materials = Materials.List;
             model.buffers = Buffers;
             model.bufferViews = BufferViews;
@@ -256,12 +270,12 @@ namespace glTFRevitExport
                     {
                         using (BinaryWriter writer = new BinaryWriter(f))
                         {
-                            foreach (var coord in bin.vertexBuffer)
+                            foreach (var coord in bin.contents.vertexBuffer)
                             {
                                 writer.Write((float)coord);
                             }
                             // TODO: add writer for normals buffer
-                            foreach (var index in bin.indexBuffer)
+                            foreach (var index in bin.contents.indexBuffer)
                             {
                                 writer.Write((int)index);
                             }
@@ -293,7 +307,6 @@ namespace glTFRevitExport
             // create a new node for the element
             glTFNode newNode = new glTFNode();
             newNode.name = Util.ElementDescription(e);
-            //newNode.matrix = new List<float>() { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
 
             if (_exportProperties)
             {
@@ -390,7 +403,7 @@ namespace glTFRevitExport
             // populate current vertices vertex data and current geometry faces data
             Transform t = CurrentTransform;
             IList<XYZ> pts = polymesh.GetPoints();
-            pts = pts.Select(p => t.OfPoint(p)).ToList();
+            //pts = pts.Select(p => t.OfPoint(p)).ToList();
             foreach (PolymeshFacet facet in polymesh.GetFacets())
             {
                 int v1 = _currentVertices.CurrentItem.AddVertex(new PointInt(pts[facet.V1], _flipCoords));
@@ -430,13 +443,9 @@ namespace glTFRevitExport
             // create a new mesh for the node (we're assuming 1 mesh per node w/ multiple primatives on mesh)
             glTFMesh newMesh = new glTFMesh();
             newMesh.primitives = new List<glTFMeshPrimitive>();
-            Meshes.AddOrUpdateCurrent(e.UniqueId, newMesh);
-
-            // add the index of this mesh to the current node.
-            Nodes.CurrentItem.mesh = Meshes.CurrentIndex;
 
             // Add vertex data to _currentGeometry for each geometry/material pairing
-            foreach (KeyValuePair<string,VertexLookupInt> kvp in _currentVertices.Dict)
+            foreach (KeyValuePair<string, VertexLookupInt> kvp in _currentVertices.Dict)
             {
                 string vertex_key = kvp.Key;
                 foreach (KeyValuePair<PointInt, int> p in kvp.Value)
@@ -451,7 +460,10 @@ namespace glTFRevitExport
             foreach (KeyValuePair<string, GeometryData> kvp in _currentGeometry.Dict)
             {
                 glTFBinaryData elementBinary = AddGeometryMeta(kvp.Value, kvp.Key);
-                binaryFileData.Add(elementBinary);
+                if (elementBinary.hashcode != null)
+                {
+                    binaryFileData.Add(elementBinary);
+                }
 
                 string material_key = kvp.Key.Split('_')[1];
 
@@ -461,8 +473,26 @@ namespace glTFRevitExport
                 primative.material = Materials.GetIndexFromUUID(material_key);
                 // TODO: Add normal here
 
-                Meshes.CurrentItem.primitives.Add(primative);
+                newMesh.primitives.Add(primative);
             }
+
+            string meshHash = GenerateSHA256Hash(newMesh);
+            HashSearch hs = new HashSearch(meshHash);
+            int idx = Meshes.List.FindIndex(hs.EqualTo);
+
+            if (idx != -1)
+            {
+                Nodes.CurrentItem.mesh = idx;
+                return;
+            }
+
+            MeshContainer mc = new MeshContainer();
+            mc.hashcode = meshHash;
+            mc.contents = newMesh;
+            Meshes.AddOrUpdateCurrent(e.UniqueId, mc);
+
+            // add the index of this mesh to the current node.
+            Nodes.CurrentItem.mesh = Meshes.CurrentIndex;
         }
 
         /// <summary>
@@ -474,9 +504,39 @@ namespace glTFRevitExport
         public RenderNodeAction OnInstanceBegin(InstanceNode node)
         {
             Debug.WriteLine("  OnInstanceBegin");
+            Debug.WriteLine(String.Format("    Instance: {0}", node.NodeName));
+            Debug.WriteLine(String.Format("    Mat4: {0}", node.GetTransform().IsIdentity));
+
             _transformStack.Push(
                 CurrentTransform.Multiply(node.GetTransform())
             );
+
+            if (CurrentTransform.IsIdentity == false)
+            {
+                var BasisX = CurrentTransform.BasisX;
+                var BasisY = CurrentTransform.BasisY;
+                var BasisZ = CurrentTransform.BasisZ;
+                var Origin = CurrentTransform.Origin;
+                var OriginX = PointInt.ConvertFeetToMillimetres(Origin.X);
+                var OriginY = PointInt.ConvertFeetToMillimetres(Origin.Y);
+                var OriginZ = PointInt.ConvertFeetToMillimetres(Origin.Z);
+                // Using column major ordering (per glTF spec) of standard 4x4 xform matrix
+                List<double> glXform = new List<double>(16) {
+                    BasisX.X, BasisX.Y, BasisX.Z, 0,
+                    BasisY.X, BasisY.Y, BasisY.Z, 0,
+                    BasisZ.X, BasisZ.Y, BasisZ.Z, 0,
+                    OriginX, OriginY, OriginZ, 1
+                };
+
+                //if(_flipCoords)
+                //{
+                //    glXform[12] = -glXform[12];
+                //    var tmpY = glXform[13];
+                //    glXform[13] = glXform[14];
+                //    glXform[14] = tmpY;
+                //}
+                Nodes.CurrentItem.matrix = glXform;
+            }
 
             // We can either skip this instance or proceed with rendering it.
             return RenderNodeAction.Proceed;
@@ -503,6 +563,29 @@ namespace glTFRevitExport
         /// <returns></returns>
         public glTFBinaryData AddGeometryMeta(GeometryData geomData, string name)
         {
+            glTFBinaryData bufferData = new glTFBinaryData();
+            glTFBinaryBufferContents bufferContents = new glTFBinaryBufferContents();
+            foreach (var coord in geomData.vertices)
+            {
+                float vFloat = Convert.ToSingle(coord);
+                bufferContents.vertexBuffer.Add(vFloat);
+            }
+            foreach (var index in geomData.faces)
+            {
+                bufferContents.indexBuffer.Add(index);
+            }
+            string calculatedHash = GenerateSHA256Hash(bufferContents);
+
+            HashSearch hs = new HashSearch(calculatedHash);
+            var match = binaryFileData.Find(hs.EqualTo);
+            if (match != null)
+            {
+                bufferData.vertexAccessorIndex = match.vertexAccessorIndex;
+                bufferData.indexAccessorIndex = match.indexAccessorIndex;
+                // omit name and hash to have this object thrown away
+                return bufferData;
+            }
+
             // add a buffer
             glTFBuffer buffer = new glTFBuffer();
             buffer.uri = name + ".bin";
@@ -512,17 +595,8 @@ namespace glTFRevitExport
             /**
              * Buffer Data
              **/
-            glTFBinaryData bufferData = new glTFBinaryData();
             bufferData.name = buffer.uri;
-            foreach (var coord in geomData.vertices)
-            {
-                float vFloat = Convert.ToSingle(coord);
-                bufferData.vertexBuffer.Add(vFloat);
-            }
-            foreach (var index in geomData.faces)
-            {
-                bufferData.indexBuffer.Add(index);
-            }
+            bufferData.contents = bufferContents;
             // TODO: Uncomment for normals
             //foreach (var normal in geomData.normals)
             //{
@@ -530,9 +604,9 @@ namespace glTFRevitExport
             //}
 
             // Get max and min for vertex data
-            float[] vertexMinMax = Util.GetVec3MinMax(bufferData.vertexBuffer);
+            float[] vertexMinMax = Util.GetVec3MinMax(bufferContents.vertexBuffer);
             // Get max and min for index data
-            int[] faceMinMax = Util.GetScalarMinMax(bufferData.indexBuffer);
+            int[] faceMinMax = Util.GetScalarMinMax(bufferContents.indexBuffer);
             // TODO: Uncomment for normals
             // Get max and min for normal data
             //float[] normalMinMax = getVec3MinMax(bufferData.normalBuffer);
@@ -612,7 +686,43 @@ namespace glTFRevitExport
             Accessors.Add(faceAccessor);
             bufferData.indexAccessorIndex = Accessors.Count - 1;
 
+            bufferData.hashcode = calculatedHash;
+
             return bufferData;
+        }
+
+        public class HashSearch
+        {
+            string _S;
+            public HashSearch(string s)
+            {
+                _S = s;
+            }
+            public bool EqualTo(HashedType d)
+            {
+                return d.hashcode.Equals(_S);
+            }
+        }
+
+        public string GenerateSHA256Hash<T>(T data)
+        {
+            var binFormatter = new BinaryFormatter();
+            var mStream = new MemoryStream();
+            binFormatter.Serialize(mStream, data);
+
+            using(SHA256 hasher = SHA256.Create())
+            {
+                mStream.Position = 0;
+                byte[] byteHash = hasher.ComputeHash(mStream);
+
+                var sBuilder = new StringBuilder();
+                for (int i = 0; i < byteHash.Length; i++)
+                {
+                    sBuilder.Append(byteHash[i].ToString("x2"));
+                }
+
+                return sBuilder.ToString();
+            }
         }
 
         public bool IsCanceled()

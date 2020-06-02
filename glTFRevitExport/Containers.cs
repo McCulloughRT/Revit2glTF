@@ -190,7 +190,7 @@ namespace glTFRevitExport
         /// Conversion a given length value 
         /// from feet to millimetre.
         /// </summary>
-        static long ConvertFeetToMillimetres(double d)
+        public static long ConvertFeetToMillimetres(double d)
         {
             if (0 < d)
             {

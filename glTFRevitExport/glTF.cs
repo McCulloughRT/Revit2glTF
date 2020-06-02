@@ -49,15 +49,24 @@ namespace glTFRevitExport
     /// A binary data store serialized to a *.bin file
     /// https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#binary-data-storage
     /// </summary>
-    public class glTFBinaryData
+    public class glTFBinaryData : HashedType
     {
-        public List<float> vertexBuffer { get; set; } = new List<float>();
-        public List<int> indexBuffer { get; set; } = new List<int>();
+        public glTFBinaryBufferContents contents { get; set; }
+        //public List<float> vertexBuffer { get; set; } = new List<float>();
+        //public List<int> indexBuffer { get; set; } = new List<int>();
         //public List<float> normalBuffer { get; set; } = new List<float>();
         public int vertexAccessorIndex { get; set; }
         public int indexAccessorIndex { get; set; }
         //public int normalsAccessorIndex { get; set; }
         public string name { get; set; }
+        //public string hashcode { get; set; }
+    }
+
+    [Serializable]
+    public class glTFBinaryBufferContents
+    {
+        public List<float> vertexBuffer { get; set; } = new List<float>();
+        public List<int> indexBuffer { get; set; } = new List<int>();
     }
 
     /// <summary>
@@ -95,7 +104,7 @@ namespace glTFRevitExport
         /// <summary>
         /// A floating-point 4x4 transformation matrix stored in column major order.
         /// </summary>
-        public List<float> matrix { get; set; }
+        public List<double> matrix { get; set; }
         /// <summary>
         /// The indices of this node's children.
         /// </summary>
@@ -106,10 +115,22 @@ namespace glTFRevitExport
         public glTFExtras extras { get; set; }
     }
 
+    public class HashedType
+    {
+        public string hashcode { get; set; }
+    }
+
+    public class MeshContainer : HashedType
+    {
+        //public string hashcode { get; set; }
+        public glTFMesh contents { get; set; }
+    }
+
     /// <summary>
     /// The array of primitives defining the mesh of an object.
     /// https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#meshes
     /// </summary>
+    [Serializable]
     public class glTFMesh
     {
         public List<glTFMeshPrimitive> primitives { get; set; }
@@ -119,6 +140,7 @@ namespace glTFRevitExport
     /// Properties defining where the GPU should look to find the mesh and material data.
     /// https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#meshes
     /// </summary>
+    [Serializable]
     public class glTFMeshPrimitive
     {
         public glTFAttribute attributes { get; set; } = new glTFAttribute();
@@ -147,6 +169,7 @@ namespace glTFRevitExport
     /// The list of accessors available to the renderer for a particular mesh.
     /// https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#meshes
     /// </summary>
+    [Serializable]
     public class glTFAttribute
     {
         /// <summary>
@@ -223,7 +246,7 @@ namespace glTFRevitExport
         /// </summary>
         public int count { get; set; }
         /// <summary>
-        /// Specifies if the attribute is a scala, vector, or matrix
+        /// Specifies if the attribute is a scalar, vector, or matrix
         /// </summary>
         public string type { get; set; }
         /// <summary>
@@ -256,4 +279,16 @@ namespace glTFRevitExport
         public List<double> direction { get; set; }
         public double length { get; set; }
     }
+
+    //public class glTFFunctions
+    //{
+    //    public static glTFBinaryData getMeshData(glTFNode node, glTF gltf)
+    //    {
+    //        if(node.mesh.HasValue)
+    //        {
+    //            glTFMesh mesh = gltf.meshes[node.mesh.Value];
+    //            mesh.
+    //        }
+    //    }
+    //}
 }
