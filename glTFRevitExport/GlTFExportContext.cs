@@ -293,8 +293,8 @@ namespace glTFRevitExport
         /// <returns></returns>
         public RenderNodeAction OnElementBegin(ElementId elementId)
         {
-            Debug.WriteLine("  OnElementBegin");
             Element e = _doc.GetElement(elementId);
+            Debug.WriteLine(String.Format("  OnElementBegin: {1}-{0}", e.Name, elementId));
 
             if (Nodes.Contains(e.UniqueId))
             {
@@ -315,11 +315,11 @@ namespace glTFRevitExport
                 extras.UniqueId = e.UniqueId;
                 extras.Properties = Util.GetElementProperties(e, true);
                 newNode.extras = extras;
-
-                Nodes.AddOrUpdateCurrent(e.UniqueId, newNode);
-                // add the index of this node to our root node children array
-                rootNode.children.Add(Nodes.CurrentIndex);
             }
+
+            Nodes.AddOrUpdateCurrent(e.UniqueId, newNode);
+            // add the index of this node to our root node children array
+            rootNode.children.Add(Nodes.CurrentIndex);
 
             // Reset _currentGeometry for new element
             _currentGeometry = new IndexedDictionary<GeometryData>();
@@ -503,8 +503,10 @@ namespace glTFRevitExport
         /// <returns></returns>
         public RenderNodeAction OnInstanceBegin(InstanceNode node)
         {
-            Debug.WriteLine("  OnInstanceBegin");
-            Debug.WriteLine(String.Format("    Instance: {0}", node.NodeName));
+            ElementId symId = node.GetSymbolId();
+            Element symElem = _doc.GetElement(symId);
+            
+            Debug.WriteLine(String.Format("  OnInstanceBegin: {0}-{1}", symId, symElem.Name));
             Debug.WriteLine(String.Format("    Mat4: {0}", node.GetTransform().IsIdentity));
 
             _transformStack.Push(

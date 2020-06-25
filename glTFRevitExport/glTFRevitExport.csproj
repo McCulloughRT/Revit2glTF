@@ -73,6 +73,7 @@
     <Compile Include="glTF.cs" />
     <Compile Include="GlTFExportContext.cs" />
     <Compile Include="Containers.cs" />
+    <Compile Include="GLTFManager.cs" />
     <Compile Include="Util.cs" />
     <Compile Include="WPF\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>

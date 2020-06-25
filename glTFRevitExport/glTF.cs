@@ -29,6 +29,12 @@ namespace glTFRevitExport
         FLOAT = 5126
     }
 
+    public struct glTFContainer
+    {
+        public glTF glTF;
+        public List<glTFBinaryData> binaries;
+    }
+
     /// <summary>
     /// The json serializable glTF file format.
     /// https://github.com/KhronosGroup/glTF/tree/master/specification/2.0

@@ -11,6 +11,7 @@ namespace glTFRevitExport
     /// </summary>
     class GeometryData
     {
+        public VertexLookupInt vertDictionary = new VertexLookupInt();
         public List<long> vertices = new List<long>();
         public List<double> normals = new List<double>();
         public List<double> uvs = new List<double>();
@@ -127,42 +128,42 @@ namespace glTFRevitExport
     /// A vertex lookup class to eliminate 
     /// duplicate vertex definitions.
     /// </summary>
-    class VertexLookupXyz : Dictionary<XYZ, int>
-    {
-        /// <summary>
-        /// Define equality for Revit XYZ points.
-        /// Very rough tolerance, as used by Revit itself.
-        /// </summary>
-        class XyzEqualityComparer : IEqualityComparer<XYZ>
-        {
-            const double _sixteenthInchInFeet = 1.0 / (16.0 * 12.0);
+    //class VertexLookupXyz : Dictionary<XYZ, int>
+    //{
+    //    /// <summary>
+    //    /// Define equality for Revit XYZ points.
+    //    /// Very rough tolerance, as used by Revit itself.
+    //    /// </summary>
+    //    class XyzEqualityComparer : IEqualityComparer<XYZ>
+    //    {
+    //        const double _sixteenthInchInFeet = 1.0 / (16.0 * 12.0);
 
-            public bool Equals(XYZ p, XYZ q)
-            {
-                return p.IsAlmostEqualTo(q, _sixteenthInchInFeet);
-            }
+    //        public bool Equals(XYZ p, XYZ q)
+    //        {
+    //            return p.IsAlmostEqualTo(q, _sixteenthInchInFeet);
+    //        }
 
-            public int GetHashCode(XYZ p)
-            {
-                return Util.PointString(p).GetHashCode();
-            }
-        }
+    //        public int GetHashCode(XYZ p)
+    //        {
+    //            return Util.PointString(p).GetHashCode();
+    //        }
+    //    }
 
-        public VertexLookupXyz() : base(new XyzEqualityComparer())
-        {
-        }
+    //    public VertexLookupXyz() : base(new XyzEqualityComparer())
+    //    {
+    //    }
 
-        /// <summary>
-        /// Return the index of the given vertex,
-        /// adding a new entry if required.
-        /// </summary>
-        public int AddVertex(XYZ p)
-        {
-            return ContainsKey(p)
-              ? this[p]
-              : this[p] = Count;
-        }
-    }
+    //    /// <summary>
+    //    /// Return the index of the given vertex,
+    //    /// adding a new entry if required.
+    //    /// </summary>
+    //    public int AddVertex(XYZ p)
+    //    {
+    //        return ContainsKey(p)
+    //          ? this[p]
+    //          : this[p] = Count;
+    //    }
+    //}
 
     /// <summary>
     /// From Jeremy Tammik's RvtVa3c exporter:
