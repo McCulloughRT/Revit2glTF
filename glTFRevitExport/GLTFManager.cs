@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Security.Cryptography;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.IO;
+using System.Diagnostics;
 
 namespace glTFRevitExport
 {
@@ -71,16 +72,61 @@ namespace glTFRevitExport
 
     class GLTFManager
     {
+
+        /// <summary>
+        /// Flag to write coords as Z up instead of Y up (if true).
+        /// CAUTION: With local coordinate systems and transforms, this no longer
+        /// produces expected results. TODO on fixing it, however there is a larger
+        /// philisophical debtate to be had over whether flipping coordinates in
+        /// source CAD applications should EVER be the correct thing to do (as opposed to
+        /// flipping the camera in the viewer).
+        /// </summary>
+        private bool _flipCoords = false;
+        /// <summary>
+        /// Toggles the export of JSON properties as a glTF Extras
+        /// object on each node.
+        /// </summary>
+        private bool _exportProperties = true;
+
+        /// <summary>
+        /// Stateful, uuid indexable list of all materials in the export.
+        /// </summary>
         private IndexedDictionary<glTFMaterial> materialDict = new IndexedDictionary<glTFMaterial>();
+        /// <summary>
+        /// Dictionary of nodes keyed to their unique id.
+        /// </summary>
         private Dictionary<string, Node> nodeDict = new Dictionary<string, Node>();
+        /// <summary>
+        /// Hashable container for mesh data, to aid instancing.
+        /// </summary>
         private List<MeshContainer> meshContainers = new List<MeshContainer>();
 
+        /// <summary>
+        /// List of root nodes defining scenes.
+        /// </summary>
         public List<glTFScene> scenes = new List<glTFScene>();
+        /// <summary>
+        /// List of all buffers referencing the binary file data.
+        /// </summary>
         public List<glTFBuffer> buffers = new List<glTFBuffer>();
+        /// <summary>
+        /// List of all BufferViews referencing the buffers.
+        /// </summary>
         public List<glTFBufferView> bufferViews = new List<glTFBufferView>();
+        /// <summary>
+        /// List of all Accessors referencing the BufferViews.
+        /// </summary>
         public List<glTFAccessor> accessors = new List<glTFAccessor>();
+        /// <summary>
+        /// Container for the vertex/face/normal information
+        /// that will be serialized into a binary format
+        /// for the final *.bin files.
+        /// </summary>
         public List<glTFBinaryData> binaryFileData = new List<glTFBinaryData>();
 
+        /// <summary>
+        /// Ordered list of all nodes
+        /// </summary>
         public List<glTFNode> nodes {
             get {
                 var list = nodeDict.Values.ToList();
@@ -88,24 +134,79 @@ namespace glTFRevitExport
             }
         }
 
+        /// <summary>
+        /// Returns true if the unique id is already present in the list of nodes.
+        /// </summary>
+        /// <param name="uniqueId"></param>
+        /// <returns></returns>
+        public bool containsNode(string uniqueId)
+        {
+            return nodeDict.ContainsKey(uniqueId);
+        }
+
+        /// <summary>
+        /// List of all materials referenced by meshes.
+        /// </summary>
         public List<glTFMaterial> materials {
             get {
                 return materialDict.List;
             }
         }
 
+        /// <summary>
+        /// List of all meshes referenced by nodes.
+        /// </summary>
         public List<glTFMesh> meshes {
             get {
                 return meshContainers.Select(x => x.contents).ToList();
             }
         }
 
-        private bool _flipCoords = false;
-        private bool _exportProperties = true;
-
-        private string currentNodeId;
-        private Dictionary<string, GeometryData> currentGeometry;
+        /// <summary>
+        /// Stack maintaining the uniqueId's of each node down
+        /// the current scene graph branch.
+        /// </summary>
         private Stack<string> parentStack = new Stack<string>();
+        /// <summary>
+        /// The uniqueId of the currently open node.
+        /// </summary>
+        private string currentNodeId {
+            get {
+                return parentStack.Peek();
+            }
+        }
+
+        /// <summary>
+        /// Stack maintaining the geometry containers for each
+        /// node down the current scene graph branch. These are popped
+        /// as we retreat back up the graph.
+        /// </summary>
+        private Stack<Dictionary<string, GeometryData>> geometryStack = new Stack<Dictionary<string, GeometryData>>();
+        /// <summary>
+        /// The geometry container for the currently open node.
+        /// </summary>
+        private Dictionary<string, GeometryData> currentGeom {
+            get {
+                return geometryStack.Peek();
+            }
+        }
+
+        /// <summary>
+        /// Returns proper tab alignment for displaying element
+        /// hierarchy in debug printing.
+        /// </summary>
+        public string formatDebugHeirarchy
+        {
+            get
+            {
+                string spaces = "";
+                for (int i = 0; i < parentStack.Count; i++)
+                {
+                    spaces += "  ";
+                }
+                return spaces;
+            }
+        }
 
         public void Start(bool exportProperties = true)
         {
@@ -114,6 +215,7 @@ namespace glTFRevitExport
             Node rootNode = new Node(0);
             rootNode.children = new List<int>();
             nodeDict.Add(rootNode.id, rootNode);
+            parentStack.Push(rootNode.id);
 
             glTFScene defaultScene = new glTFScene();
             defaultScene.nodes.Add(0);
@@ -139,11 +241,10 @@ namespace glTFRevitExport
             return container;
         }
 
-        public void openNode(Element elem, Transform xform = null)
+        public void OpenNode(Element elem, Transform xform = null, bool isInstance = false)
         {
-            if (nodeDict.ContainsKey(elem.UniqueId)) return;
+            Node node = new Node(elem, nodeDict.Count, _exportProperties, isInstance, formatDebugHeirarchy);
 
-            Node node = new Node(elem, nodeDict.Count, _exportProperties);
             if (parentStack.Count > 0)
             {
                 string parentId = parentStack.Peek();
@@ -159,97 +260,90 @@ namespace glTFRevitExport
             }
 
             nodeDict.Add(node.id, node);
-            currentNodeId = node.id;
 
-            // TODO: do geometry initialization
-            openGeometry();
+            OpenGeometry();
+            Debug.WriteLine(String.Format("{0}Node Open", formatDebugHeirarchy));
         }
 
-        public void closeNode(Element elem)
+        public void CloseNode()
         {
-            Node node = nodeDict[elem.UniqueId];
-            node.isFinalized = true;
-            currentNodeId = null;
+            Debug.WriteLine(String.Format("{0}Closing Node", formatDebugHeirarchy));
 
-            // do geometry finalization
-            closeGeometry();
+            if (currentGeom != null)
+            {
+                CloseGeometry();
+            }
 
-            // retreat back up parent tree
+            Debug.WriteLine(String.Format("{0}  Node Closed", formatDebugHeirarchy));
             parentStack.Pop();
         }
 
-        public void switchMaterial(MaterialNode matNode, string name = null, string id = null)
+        public void SwitchMaterial(MaterialNode matNode, string name = null, string id = null)
         {
             glTFMaterial gl_mat = new glTFMaterial();
-            string uniqueId = id;
-            if (uniqueId == null)
-            {
-                uniqueId = string.Format("r{0}g{1}b{2}", matNode.Color.Red.ToString(), matNode.Color.Green.ToString(), matNode.Color.Blue.ToString());
-                gl_mat.name = string.Format("MaterialNode_{0}_{1}", Util.ColorToInt(matNode.Color), Util.RealString(matNode.Transparency * 100));
+            gl_mat.name = name;
 
-                glTFPBR pbr = new glTFPBR();
-                pbr.baseColorFactor = new List<float>() { matNode.Color.Red / 255f, matNode.Color.Green / 255f, matNode.Color.Blue / 255f, (float)matNode.Transparency * 255 };
-                pbr.metallicFactor = 0f;
-                pbr.roughnessFactor = 1f;
-                gl_mat.pbrMetallicRoughness = pbr;
-            } else
-            {
-                gl_mat.name = name;
-                glTFPBR pbr = new glTFPBR();
-                pbr.baseColorFactor = new List<float>() { matNode.Color.Red / 255f, matNode.Color.Green / 255f, matNode.Color.Blue / 255f, (float)matNode.Transparency * 255 };
-                pbr.metallicFactor = 0f;
-                pbr.roughnessFactor = 1f;
-                gl_mat.pbrMetallicRoughness = pbr;
-            }
+            glTFPBR pbr = new glTFPBR();
+            pbr.baseColorFactor = new List<float>() {
+                matNode.Color.Red / 255f,
+                matNode.Color.Green / 255f,
+                matNode.Color.Blue / 255f,
+                1f - (float)matNode.Transparency
+            };
+            pbr.metallicFactor = 0f;
+            pbr.roughnessFactor = 1f;
+            gl_mat.pbrMetallicRoughness = pbr;
 
-            materialDict.AddOrUpdateCurrent(uniqueId, gl_mat);
+            materialDict.AddOrUpdateCurrent(id, gl_mat);
         }
 
-        public void openGeometry()
+        public void OpenGeometry()
         {
-            currentGeometry = new Dictionary<string, GeometryData>();
+            geometryStack.Push(new Dictionary<string, GeometryData>());
         }
 
-        public void onGeometry(PolymeshTopology polymesh)
+        public void OnGeometry(PolymeshTopology polymesh)
         {
             if (currentNodeId == null) throw new Exception();
+
             string vertex_key = currentNodeId + "_" + materialDict.CurrentKey;
-            if (currentGeometry.ContainsKey(vertex_key) == false)
+            if (currentGeom.ContainsKey(vertex_key) == false)
             {
-                currentGeometry.Add(vertex_key, new GeometryData());
+                currentGeom.Add(vertex_key, new GeometryData());
             }
 
             // Populate normals from this polymesh
             IList<XYZ> norms = polymesh.GetNormals();
             foreach (XYZ norm in norms)
             {
-                currentGeometry[vertex_key].normals.Add(norm.X);
-                currentGeometry[vertex_key].normals.Add(norm.Y);
-                currentGeometry[vertex_key].normals.Add(norm.Z);
+                currentGeom[vertex_key].normals.Add(norm.X);
+                currentGeom[vertex_key].normals.Add(norm.Y);
+                currentGeom[vertex_key].normals.Add(norm.Z);
             }
 
             // Populate vertex and faces data
             IList<XYZ> pts = polymesh.GetPoints();
             foreach (PolymeshFacet facet in polymesh.GetFacets())
             {
-                int v1 = currentGeometry[vertex_key].vertDictionary.AddVertex(new PointInt(pts[facet.V1], _flipCoords));
-                int v2 = currentGeometry[vertex_key].vertDictionary.AddVertex(new PointInt(pts[facet.V2], _flipCoords));
-                int v3 = currentGeometry[vertex_key].vertDictionary.AddVertex(new PointInt(pts[facet.V3], _flipCoords));
+                int v1 = currentGeom[vertex_key].vertDictionary.AddVertex(new PointInt(pts[facet.V1], _flipCoords));
+                int v2 = currentGeom[vertex_key].vertDictionary.AddVertex(new PointInt(pts[facet.V2], _flipCoords));
+                int v3 = currentGeom[vertex_key].vertDictionary.AddVertex(new PointInt(pts[facet.V3], _flipCoords));
 
-                currentGeometry[vertex_key].faces.Add(v1);
-                currentGeometry[vertex_key].faces.Add(v2);
-                currentGeometry[vertex_key].faces.Add(v3);
+                currentGeom[vertex_key].faces.Add(v1);
+                currentGeom[vertex_key].faces.Add(v2);
+                currentGeom[vertex_key].faces.Add(v3);
             }
         }
 
-        public void closeGeometry()
+        public void CloseGeometry()
         {
+            Debug.WriteLine(String.Format("{0}  Closing Geometry", formatDebugHeirarchy));
             // Create the new mesh and populate the primitives with GeometryData
             glTFMesh mesh = new glTFMesh();
             mesh.primitives = new List<glTFMeshPrimitive>();
 
             // transfer ordered vertices from vertex dictionary to vertices list
-            foreach (KeyValuePair<string,GeometryData> key_geom in currentGeometry)
+            foreach (KeyValuePair<string,GeometryData> key_geom in currentGeom)
             {
                 string key = key_geom.Key;
                 GeometryData geom = key_geom.Value;
@@ -263,7 +357,13 @@ namespace glTFRevitExport
 
                 // convert GeometryData objects into glTFMeshPrimitive
                 string material_key = key.Split('_')[1];
+
                 glTFBinaryData bufferMeta = processGeometry(geom, key);
+                if (bufferMeta.hashcode != null)
+                {
+                    binaryFileData.Add(bufferMeta);
+                }
+
                 glTFMeshPrimitive primative = new glTFMeshPrimitive();
 
                 primative.attributes.POSITION = bufferMeta.vertexAccessorIndex;
@@ -295,11 +395,17 @@ namespace glTFRevitExport
                 nodeDict[currentNodeId].mesh = meshContainers.Count - 1;
             }
 
-            // Clear the geometry
-            currentGeometry = null;
+            geometryStack.Pop();
             return;
         }
 
+        /// <summary>
+        /// Takes the intermediate geometry data and performs the calculations
+        /// to convert that into glTF buffers, views, and accessors.
+        /// </summary>
+        /// <param name="geomData"></param>
+        /// <param name="name">Unique name for the .bin file that will be produced.</param>
+        /// <returns></returns>
         private glTFBinaryData processGeometry(GeometryData geom, string name)
         {
             // TODO: rename this type to glTFBufferMeta ?
@@ -443,34 +549,33 @@ namespace glTFRevitExport
         public string id;
         public bool isFinalized = false;
 
-        public Node(Element elem, int index, bool exportProperties = true)
+        public Node(Element elem, int index, bool exportProperties = true, bool isInstance = false, string heirarchyFormat = "")
         {
+            Debug.WriteLine(String.Format("{1}  Creating new node: {0}", elem, heirarchyFormat));
+            
             this.name = Util.ElementDescription(elem);
-            this.id = elem.UniqueId;
+            this.id = isInstance ? elem.UniqueId + "::" + Guid.NewGuid().ToString() : elem.UniqueId;
             this.index = index;
+            Debug.WriteLine(String.Format("{1}    Name:{0}", this.name, heirarchyFormat));
 
             if (exportProperties)
             {
                 // get the extras for this element
                 glTFExtras extras = new glTFExtras();
                 extras.UniqueId = elem.UniqueId;
+
+                //var properties = Util.GetElementProperties(elem, true);
+                //if (properties != null) extras.Properties = properties;
                 extras.Properties = Util.GetElementProperties(elem, true);
                 this.extras = extras;
             }
+            Debug.WriteLine(String.Format("{0}    Exported Properties", heirarchyFormat));
         }
         public Node(int index)
         {
             this.name = "::rootNode::";
             this.id = System.Guid.NewGuid().ToString();
             this.index = index;
-        }
-        public Node(glTFNode node)
-        {
-            this.name = node.name;
-            this.mesh = node.mesh;
-            this.matrix = node.matrix;
-            this.extras = node.extras;
-            this.children = node.children;
         }
 
         public glTFNode ToGLTFNode()
