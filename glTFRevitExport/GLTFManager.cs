@@ -15,7 +15,7 @@ namespace glTFRevitExport
     {
         static public List<double> ConvertXForm(Transform xform)
         {
-            if (xform.IsIdentity) return null;
+            if (xform == null || xform.IsIdentity) return null;
 
             var BasisX = xform.BasisX;
             var BasisY = xform.BasisY;
@@ -243,7 +243,31 @@ namespace glTFRevitExport
 
         public void OpenNode(Element elem, Transform xform = null, bool isInstance = false)
         {
-            Node node = new Node(elem, nodeDict.Count, _exportProperties, isInstance, formatDebugHeirarchy);
+            //// TODO: [RM] Commented out because this is likely to be very buggy and not the 
+            //// correct solution intent is to prevent creation of new nodes when a symbol 
+            //// is a child of an instance of the same type.
+            //// Witness: parking spaces and stair railings for examples of two
+            //// different issues with the behavior
+            //if (isInstance == true && elem is FamilySymbol)
+            //{
+            //    FamilyInstance parentInstance = nodeDict[currentNodeId].element as FamilyInstance;
+            //    if (
+            //        parentInstance != null &&
+            //        parentInstance.Symbol != null &&
+            //        elem.Name == parentInstance.Symbol.Name
+            //    )
+            //    {
+            //        nodeDict[currentNodeId].matrix = ManagerUtils.ConvertXForm(xform);
+            //        return;
+            //    }
+
+            //    //nodeDict[currentNodeId].matrix = ManagerUtils.ConvertXForm(xform);
+            //    //return;
+            //}
+            bool exportNodeProperties = _exportProperties;
+            if (isInstance == true && elem is FamilySymbol) exportNodeProperties = false;
+
+            Node node = new Node(elem, nodeDict.Count, exportNodeProperties, isInstance, formatDebugHeirarchy);
 
             if (parentStack.Count > 0)
             {
@@ -265,8 +289,27 @@ namespace glTFRevitExport
             Debug.WriteLine(String.Format("{0}Node Open", formatDebugHeirarchy));
         }
 
-        public void CloseNode()
+        public void CloseNode(Element elem = null, bool isInstance = false)
         {
+            //// TODO: [RM] Commented out because this is likely to be very buggy and not the 
+            //// correct solution intent is to prevent creation of new nodes when a symbol 
+            //// is a child of an instance of the same type.
+            //// Witness: parking spaces and stair railings for examples of two
+            //// different issues with the behavior
+            //if (isInstance && elem is FamilySymbol)
+            //{
+            //    FamilyInstance parentInstance = nodeDict[currentNodeId].element as FamilyInstance;
+            //    if (
+            //        parentInstance != null &&
+            //        parentInstance.Symbol != null &&
+            //        elem.Name == parentInstance.Symbol.Name
+            //    )
+            //    {
+            //        return;
+            //    }
+            //    //return;
+            //}
+
             Debug.WriteLine(String.Format("{0}Closing Node", formatDebugHeirarchy));
 
             if (currentGeom != null)
@@ -548,11 +591,13 @@ namespace glTFRevitExport
         public int index;
         public string id;
         public bool isFinalized = false;
+        public Element element;
 
         public Node(Element elem, int index, bool exportProperties = true, bool isInstance = false, string heirarchyFormat = "")
         {
             Debug.WriteLine(String.Format("{1}  Creating new node: {0}", elem, heirarchyFormat));
-            
+
+            this.element = elem;
             this.name = Util.ElementDescription(elem);
             this.id = isInstance ? elem.UniqueId + "::" + Guid.NewGuid().ToString() : elem.UniqueId;
             this.index = index;

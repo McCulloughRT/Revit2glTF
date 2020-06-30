@@ -277,9 +277,10 @@ namespace glTFRevitExport
         public RenderNodeAction OnInstanceBegin(InstanceNode node)
         {
             Debug.WriteLine(String.Format("{0}OnInstanceBegin", manager.formatDebugHeirarchy));
+            
             ElementId symId = node.GetSymbolId();
             Element symElem = _doc.GetElement(symId);
-            
+
             Debug.WriteLine(String.Format("{2}OnInstanceBegin: {0}-{1}", symId, symElem.Name, manager.formatDebugHeirarchy));
 
             var nodeXform = node.GetTransform();
@@ -296,7 +297,11 @@ namespace glTFRevitExport
         public void OnInstanceEnd(InstanceNode node)
         {
             Debug.WriteLine(String.Format("{0}OnInstanceEnd", manager.formatDebugHeirarchy.Substring(0,manager.formatDebugHeirarchy.Count() - 2)));
-            manager.CloseNode();
+
+            ElementId symId = node.GetSymbolId();
+            Element symElem = _doc.GetElement(symId);
+
+            manager.CloseNode(symElem, true);
         }
 
         public bool IsCanceled()
