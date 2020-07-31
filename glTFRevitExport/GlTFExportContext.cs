@@ -11,7 +11,7 @@ using System.Text;
 
 namespace glTFRevitExport
 {
-    class glTFExportContext : IExportContext
+    public class glTFExportContext : IExportContext
     {
         private bool _skipElementFlag = false;
 
