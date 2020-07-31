@@ -84,6 +84,46 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release2017|x64'">
+    <OutputPath>bin\Release2017\</OutputPath>
+    <Optimize>true</Optimize>
+    <DefineConstants>REVIT2017</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release2018|x64'">
+    <OutputPath>bin\Release2018\</OutputPath>
+    <Optimize>true</Optimize>
+    <DefineConstants>REVIT2018</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release2019|x64'">
+    <OutputPath>bin\Release2019\</OutputPath>
+    <Optimize>true</Optimize>
+    <DefineConstants>REVIT2019</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release2020|x64'">
+    <OutputPath>bin\Release2020\</OutputPath>
+    <Optimize>true</Optimize>
+    <DefineConstants>REVIT2020</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release2021|x64'">
+    <OutputPath>bin\Release2021\</OutputPath>
+    <Optimize>true</Optimize>
+    <DefineConstants>REVIT2021</DefineConstants>
+    <PlatformTarget>x64</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
   <PropertyGroup>
     <StartupObject />
   </PropertyGroup>
