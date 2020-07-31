@@ -127,7 +127,7 @@ namespace glTFRevitExport
     /// https://github.com/va3c/RvtVa3c
     /// An integer-based 3D point class.
     /// </summary>
-    class PointInt : IComparable<PointInt>
+    public class PointInt : IComparable<PointInt>
     {
         public long X { get; set; }
         public long Y { get; set; }
@@ -200,7 +200,7 @@ namespace glTFRevitExport
     /// A vertex lookup class to eliminate 
     /// duplicate vertex definitions.
     /// </summary>
-    class VertexLookupInt : Dictionary<PointInt, int>
+    public class VertexLookupInt : Dictionary<PointInt, int>
     {
         /// <summary>
         /// Define equality for integer-based PointInt.

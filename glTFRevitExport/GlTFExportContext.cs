@@ -139,7 +139,7 @@ namespace glTFRevitExport
                 container.glTF.buffers.Clear();
                 container.glTF.buffers.Add(buffer);
 
-                using (FileStream f = File.Create(_filename + ".bin"))
+                using (FileStream f = File.Create(Path.Combine(_directory, _filename + ".bin")))
                 {
                     using (BinaryWriter writer = new BinaryWriter(f))
                     {
@@ -163,7 +163,7 @@ namespace glTFRevitExport
                 // Write the *.bin files
                 foreach (var bin in container.binaries)
                 {
-                    using (FileStream f = File.Create(_directory + bin.name))
+                    using (FileStream f = File.Create(Path.Combine(_directory, bin.name)))
                     {
                         using (BinaryWriter writer = new BinaryWriter(f))
                         {
