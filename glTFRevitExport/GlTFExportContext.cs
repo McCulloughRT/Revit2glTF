@@ -39,11 +39,12 @@ namespace glTFRevitExport
         private glTFExportConfigs _cfgs = new glTFExportConfigs();
 
         /// <summary>
-        /// The name for the .gltf file.
+        /// The name for the export files
         /// </summary>
         private string _filename;
+        
         /// <summary>
-        /// The directory for the .bin files.
+        /// The directory for the export files
         /// </summary>
         private string _directory;
 
@@ -63,7 +64,8 @@ namespace glTFRevitExport
         {
             documentStack.Push(doc);
 
-            _filename = filename;
+            // ensure filename is really a file name and no extension
+            _filename = Path.GetFileNameWithoutExtension(filename);
             _directory = directory;
             _cfgs = configs is null ? _cfgs : configs;
         }
@@ -146,15 +148,13 @@ namespace glTFRevitExport
                     }
                 }
 
-                string fileEnd = _filename.Substring(_directory.Count());
-
                 glTFBuffer buffer = new glTFBuffer();
                 buffer.uri = _filename + ".bin";
                 buffer.byteLength = bytePosition;
                 container.glTF.buffers.Clear();
                 container.glTF.buffers.Add(buffer);
 
-                using (FileStream f = File.Create(Path.Combine(_directory, _filename + ".bin")))
+                using (FileStream f = File.Create(Path.Combine(_directory, buffer.uri)))
                 {
                     using (BinaryWriter writer = new BinaryWriter(f))
                     {
@@ -198,7 +198,7 @@ namespace glTFRevitExport
 
             // Write the *.gltf file
             string serializedModel = JsonConvert.SerializeObject(container.glTF, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
-            File.WriteAllText(_filename, serializedModel);
+            File.WriteAllText(Path.Combine(_directory, _filename + ".gltf"), serializedModel);
         }
 
         /// <summary>
