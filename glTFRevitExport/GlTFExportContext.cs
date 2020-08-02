@@ -36,9 +36,6 @@ namespace glTFRevitExport
 
     public class glTFExportContext : IExportContext
     {
-        private Document _doc;
-        private bool _skipElementFlag = false;
-
         private glTFExportConfigs _cfgs = new glTFExportConfigs();
 
         /// <summary>
@@ -50,6 +47,7 @@ namespace glTFRevitExport
         /// </summary>
         private string _directory;
 
+        private bool _skipElementFlag = false;
 
         private GLTFManager manager = new GLTFManager();
         private Stack<Document> documentStack = new Stack<Document>();
@@ -78,7 +76,7 @@ namespace glTFRevitExport
         public bool Start()
         {
             Debug.WriteLine("Starting...");
-            manager.Start(_exportProperties);
+            manager.Start(_cfgs.ExportProperties);
             return true;
         }
 
