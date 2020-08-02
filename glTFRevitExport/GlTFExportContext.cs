@@ -151,7 +151,7 @@ namespace glTFRevitExport
                 string fileEnd = _filename.Substring(_directory.Count());
 
                 glTFBuffer buffer = new glTFBuffer();
-                buffer.uri = fileEnd + ".bin";
+                buffer.uri = _filename + ".bin";
                 buffer.byteLength = bytePosition;
                 container.glTF.buffers.Clear();
                 container.glTF.buffers.Add(buffer);
