@@ -11,18 +11,35 @@ using System.Text;
 
 namespace glTFRevitExport
 {
-    public class glTFExportContext : IExportContext
-    {
-        private bool _skipElementFlag = false;
+    public class glTFExportConfigs {
+        /// <summary>
+        /// Flag to export all buffers into a single .bin file (if true).
+        /// </summary>
+        public bool SingleBinary = true;
 
         /// <summary>
         /// Flag to export all the properties for each element.
         /// </summary>
-        private bool _exportProperties;
+        public bool ExportProperties = true;
+
         /// <summary>
-        /// Flag to export all buffers into a single .bin file (if true).
+        /// Flag to write coords as Z up instead of Y up (if true).
         /// </summary>
-        private bool _singleBinary;
+        public bool FlipCoords = true;
+
+        /// <summary>
+        /// Include non-standard elements that are not part of
+        /// official glTF spec. If false, non-standard elements will be excluded
+        /// </summary>
+        public bool IncludeNonStdElements = true;
+    }
+
+    public class glTFExportContext : IExportContext
+    {
+        private Document _doc;
+        private bool _skipElementFlag = false;
+
+        private glTFExportConfigs _cfgs = new glTFExportConfigs();
 
         /// <summary>
         /// The name for the .gltf file.
@@ -44,14 +61,13 @@ namespace glTFRevitExport
             }
         }
 
-        public glTFExportContext(Document doc, string filename, string directory, bool singleBinary = true, bool exportProperties = true)
+        public glTFExportContext(Document doc, string filename, string directory, glTFExportConfigs configs = null)
         {
             documentStack.Push(doc);
 
-            _exportProperties = exportProperties;
-            _singleBinary = singleBinary;
             _filename = filename;
             _directory = directory;
+            _cfgs = configs is null ? _cfgs : configs;
         }
 
         /// <summary>
@@ -76,42 +92,43 @@ namespace glTFRevitExport
 
             glTFContainer container = manager.Finish();
 
-            // TODO: [RM] Standardize what non glTF spec elements will go into
-            // this "BIM glTF superset" and write a spec for it. Gridlines below
-            // are an example.
+            if (_cfgs.IncludeNonStdElements) {
+                // TODO: [RM] Standardize what non glTF spec elements will go into
+                // this "BIM glTF superset" and write a spec for it. Gridlines below
+                // are an example.
 
-            // Add gridlines as gltf nodes in the format:
-            // Origin {Vec3<double>}, Direction {Vec3<double>}, Length {double}
-            FilteredElementCollector col = new FilteredElementCollector(_doc)
-                .OfClass(typeof(Grid));
+                // Add gridlines as gltf nodes in the format:
+                // Origin {Vec3<double>}, Direction {Vec3<double>}, Length {double}
+                FilteredElementCollector col = new FilteredElementCollector(_doc)
+                    .OfClass(typeof(Grid));
 
-            var grids = col.ToElements();
-            foreach (Grid g in grids)
-            {
-                Line l = g.Curve as Line;
+                var grids = col.ToElements();
+                foreach (Grid g in grids) {
+                    Line l = g.Curve as Line;
 
-                var origin = l.Origin;
-                var direction = l.Direction;
-                var length = l.Length;
+                    var origin = l.Origin;
+                    var direction = l.Direction;
+                    var length = l.Length;
 
-                var xtras = new glTFExtras();
-                var grid = new GridParameters();
-                grid.origin = new List<double>() { origin.X, origin.Y, origin.Z };
-                grid.direction = new List<double>() { direction.X, direction.Y, direction.Z };
-                grid.length = length;
-                xtras.GridParameters = grid;
-                xtras.UniqueId = g.UniqueId;
-                xtras.Properties = Util.GetElementProperties(g, true);
+                    var xtras = new glTFExtras();
+                    var grid = new GridParameters();
+                    grid.origin = new List<double>() { origin.X, origin.Y, origin.Z };
+                    grid.direction = new List<double>() { direction.X, direction.Y, direction.Z };
+                    grid.length = length;
+                    xtras.GridParameters = grid;
+                    xtras.UniqueId = g.UniqueId;
+                    xtras.Properties = Util.GetElementProperties(g, true);
 
-                var gridNode = new glTFNode();
-                gridNode.name = g.Name;
-                gridNode.extras = xtras;
+                    var gridNode = new glTFNode();
+                    gridNode.name = g.Name;
+                    gridNode.extras = xtras;
 
                 container.glTF.nodes.Add(gridNode);
                 container.glTF.nodes[0].children.Add(container.glTF.nodes.Count - 1);
+                }
             }
 
-            if (_singleBinary)
+            if (_cfgs.SingleBinary)
             {
                 int bytePosition = 0;
                 int currentBuffer = 0;
