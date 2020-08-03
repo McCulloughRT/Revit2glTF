@@ -9,8 +9,9 @@ namespace glTFRevitExport
     /// converting between Revit Polymesh
     /// and glTF buffers.
     /// </summary>
-    class GeometryData
+    public class GeometryData
     {
+        public VertexLookupInt vertDictionary = new VertexLookupInt();
         public List<long> vertices = new List<long>();
         public List<double> normals = new List<double>();
         public List<double> uvs = new List<double>();
@@ -22,7 +23,7 @@ namespace glTFRevitExport
     /// that is also addressable by a unique ID.
     /// </summary>
     /// <typeparam name="T">The type of item contained.</typeparam>
-    class IndexedDictionary<T>
+    public class IndexedDictionary<T>
     {
         private Dictionary<string, int> _dict = new Dictionary<string, int>();
         public List<T> List { get; } = new List<T>();
@@ -124,52 +125,9 @@ namespace glTFRevitExport
     /// <summary>
     /// From Jeremy Tammik's RvtVa3c exporter:
     /// https://github.com/va3c/RvtVa3c
-    /// A vertex lookup class to eliminate 
-    /// duplicate vertex definitions.
-    /// </summary>
-    class VertexLookupXyz : Dictionary<XYZ, int>
-    {
-        /// <summary>
-        /// Define equality for Revit XYZ points.
-        /// Very rough tolerance, as used by Revit itself.
-        /// </summary>
-        class XyzEqualityComparer : IEqualityComparer<XYZ>
-        {
-            const double _sixteenthInchInFeet = 1.0 / (16.0 * 12.0);
-
-            public bool Equals(XYZ p, XYZ q)
-            {
-                return p.IsAlmostEqualTo(q, _sixteenthInchInFeet);
-            }
-
-            public int GetHashCode(XYZ p)
-            {
-                return Util.PointString(p).GetHashCode();
-            }
-        }
-
-        public VertexLookupXyz() : base(new XyzEqualityComparer())
-        {
-        }
-
-        /// <summary>
-        /// Return the index of the given vertex,
-        /// adding a new entry if required.
-        /// </summary>
-        public int AddVertex(XYZ p)
-        {
-            return ContainsKey(p)
-              ? this[p]
-              : this[p] = Count;
-        }
-    }
-
-    /// <summary>
-    /// From Jeremy Tammik's RvtVa3c exporter:
-    /// https://github.com/va3c/RvtVa3c
     /// An integer-based 3D point class.
     /// </summary>
-    class PointInt : IComparable<PointInt>
+    public class PointInt : IComparable<PointInt>
     {
         public long X { get; set; }
         public long Y { get; set; }
@@ -190,7 +148,7 @@ namespace glTFRevitExport
         /// Conversion a given length value 
         /// from feet to millimetre.
         /// </summary>
-        static long ConvertFeetToMillimetres(double d)
+        public static long ConvertFeetToMillimetres(double d)
         {
             if (0 < d)
             {
@@ -242,7 +200,7 @@ namespace glTFRevitExport
     /// A vertex lookup class to eliminate 
     /// duplicate vertex definitions.
     /// </summary>
-    class VertexLookupInt : Dictionary<PointInt, int>
+    public class VertexLookupInt : Dictionary<PointInt, int>
     {
         /// <summary>
         /// Define equality for integer-based PointInt.

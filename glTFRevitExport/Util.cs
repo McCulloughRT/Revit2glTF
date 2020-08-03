@@ -231,17 +231,20 @@ namespace glTFRevitExport
             Dictionary<string, string> a = new Dictionary<string, string>(parameters.Count);
 
             // Add element category
-            a.Add("Element Category", e.Category.Name);
+            if (e.Category != null)
+            {
+                a.Add("Element Category", e.Category.Name);
+            }
 
-            string key;
-            string val;
+
 
             foreach (Parameter p in parameters)
             {
-                key = p.Definition.Name;
+                string key = p.Definition.Name;
 
                 if (!a.ContainsKey(key))
                 {
+                    string val;
                     if (StorageType.String == p.StorageType)
                     {
                         val = p.AsString();
@@ -261,17 +264,18 @@ namespace glTFRevitExport
             {
                 ElementId idType = e.GetTypeId();
 
-                if (ElementId.InvalidElementId != idType)
+                if (idType != null && ElementId.InvalidElementId != idType)
                 {
                     Document doc = e.Document;
                     Element typ = doc.GetElement(idType);
                     parameters = typ.GetOrderedParameters();
                     foreach (Parameter p in parameters)
                     {
-                        key = "Type " + p.Definition.Name;
+                        string key = "Type " + p.Definition.Name;
 
                         if (!a.ContainsKey(key))
                         {
+                            string val;
                             if (StorageType.String == p.StorageType)
                             {
                                 val = p.AsString();
@@ -288,7 +292,9 @@ namespace glTFRevitExport
                     }
                 }
             }
-            return a;
+
+            if (a.Count == 0) return null;
+            else return a;
         }
     }
 }
