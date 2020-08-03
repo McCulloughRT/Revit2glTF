@@ -9,7 +9,7 @@ namespace glTFRevitExport
     /// converting between Revit Polymesh
     /// and glTF buffers.
     /// </summary>
-    class GeometryData
+    public class GeometryData
     {
         public VertexLookupInt vertDictionary = new VertexLookupInt();
         public List<long> vertices = new List<long>();
@@ -23,7 +23,7 @@ namespace glTFRevitExport
     /// that is also addressable by a unique ID.
     /// </summary>
     /// <typeparam name="T">The type of item contained.</typeparam>
-    class IndexedDictionary<T>
+    public class IndexedDictionary<T>
     {
         private Dictionary<string, int> _dict = new Dictionary<string, int>();
         public List<T> List { get; } = new List<T>();
@@ -127,7 +127,7 @@ namespace glTFRevitExport
     /// https://github.com/va3c/RvtVa3c
     /// An integer-based 3D point class.
     /// </summary>
-    class PointInt : IComparable<PointInt>
+    public class PointInt : IComparable<PointInt>
     {
         public long X { get; set; }
         public long Y { get; set; }
@@ -200,7 +200,7 @@ namespace glTFRevitExport
     /// A vertex lookup class to eliminate 
     /// duplicate vertex definitions.
     /// </summary>
-    class VertexLookupInt : Dictionary<PointInt, int>
+    public class VertexLookupInt : Dictionary<PointInt, int>
     {
         /// <summary>
         /// Define equality for integer-based PointInt.
