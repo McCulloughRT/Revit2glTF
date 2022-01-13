@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace glTFRevitExport
 {
@@ -66,6 +67,20 @@ namespace glTFRevitExport
         //public int normalsAccessorIndex { get; set; }
         public string name { get; set; }
         //public string hashcode { get; set; }
+
+        public void WriteData(BinaryWriter writer)
+        {
+            foreach (var coord in contents.vertexBuffer)
+            {
+                writer.Write((float)coord);
+            }
+
+            // TODO: add writer for normals buffer
+            foreach (var index in contents.indexBuffer)
+            {
+                writer.Write((int)index);
+            }
+        }
     }
 
     [Serializable]

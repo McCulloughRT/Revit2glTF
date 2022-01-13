@@ -16,6 +16,11 @@ namespace glTFRevitExport
         /// Flag to export all buffers into a single .bin file (if true).
         /// </summary>
         public bool SingleBinary = true;
+        
+        /// <summary>
+        /// Flag to export as single .glb file (if true).
+        /// </summary>
+        public bool AsGLB = true;
 
         /// <summary>
         /// Flag to export all the properties for each element.
@@ -128,7 +133,7 @@ namespace glTFRevitExport
                 }
             }
 
-            if (_cfgs.SingleBinary)
+            if (_cfgs.SingleBinary || _cfgs.AsGLB)
             {
                 int bytePosition = 0;
                 int currentBuffer = 0;
@@ -149,10 +154,37 @@ namespace glTFRevitExport
                 }
 
                 glTFBuffer buffer = new glTFBuffer();
-                buffer.uri = _filename + ".bin";
+                var binaryFileName = _filename + ".bin";
+                buffer.uri = _cfgs.AsGLB ? null : binaryFileName;
                 buffer.byteLength = bytePosition;
                 container.glTF.buffers.Clear();
                 container.glTF.buffers.Add(buffer);
+
+                if (_cfgs.AsGLB)
+                {
+                    byte[] byteBuffer;  
+                    MemoryStream memoryStream = new MemoryStream();
+                    using (BinaryWriter writer = new BinaryWriter(memoryStream))
+                    {
+                        foreach (var bin in container.binaries)
+                        {
+                            bin.WriteData(writer);
+                        }
+                        byteBuffer = memoryStream.ToArray();
+                    }
+                    var gltf = JsonConvert.SerializeObject(container.glTF,
+                                                                new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore,
+                                                                    Formatting = Formatting.None});
+
+                    using (var f = File.Create(Path.Combine(_directory, _filename + ".glb")))
+                    {
+                        using (var writer = new BinaryWriter(f))
+                        {
+                            SaveBinaryModel(gltf,byteBuffer,writer);
+                        }
+                    }
+                    return;
+                }
 
                 using (FileStream f = File.Create(Path.Combine(_directory, buffer.uri)))
                 {
@@ -160,18 +192,11 @@ namespace glTFRevitExport
                     {
                         foreach (var bin in container.binaries)
                         {
-                            foreach (var coord in bin.contents.vertexBuffer)
-                            {
-                                writer.Write((float)coord);
-                            }
-                            // TODO: add writer for normals buffer
-                            foreach (var index in bin.contents.indexBuffer)
-                            {
-                                writer.Write((int)index);
-                            }
+                            bin.WriteData(writer);
                         }
                     }
                 }
+
             }
             else
             {
@@ -182,15 +207,7 @@ namespace glTFRevitExport
                     {
                         using (BinaryWriter writer = new BinaryWriter(f))
                         {
-                            foreach (var coord in bin.contents.vertexBuffer)
-                            {
-                                writer.Write((float)coord);
-                            }
-                            // TODO: add writer for normals buffer
-                            foreach (var index in bin.contents.indexBuffer)
-                            {
-                                writer.Write((int)index);
-                            }
+                            bin.WriteData(writer);
                         }
                     }
                 }
@@ -199,6 +216,45 @@ namespace glTFRevitExport
             // Write the *.gltf file
             string serializedModel = JsonConvert.SerializeObject(container.glTF, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore });
             File.WriteAllText(Path.Combine(_directory, _filename + ".gltf"), serializedModel);
+        }
+
+       
+
+        public void SaveBinaryModel(string serializedModel, byte[] buffer, BinaryWriter binaryWriter)
+        {
+            const uint GLTFHEADER = 0x46546C67;
+            const uint GLTFVERSION2 = 2;
+            const uint CHUNKJSON = 0x4E4F534A;
+            const uint CHUNKBIN = 0x004E4942;
+            
+            var jsonText = serializedModel;
+            var jsonChunk = Encoding.UTF8.GetBytes(jsonText);
+            var jsonPadding = jsonChunk.Length & 3; if (jsonPadding != 0) jsonPadding = 4 - jsonPadding;
+
+            if (buffer != null && buffer.Length == 0) buffer = null;
+            var binPadding = buffer == null ? 0 : buffer.Length & 3; if (binPadding != 0) binPadding = 4 - binPadding;
+
+            int fullLength = 4 + 4 + 4;
+
+            fullLength += 8 + jsonChunk.Length + jsonPadding;
+            if (buffer != null) fullLength += 8 + buffer.Length + binPadding;
+
+            binaryWriter.Write(GLTFHEADER);
+            binaryWriter.Write(GLTFVERSION2);
+            binaryWriter.Write(fullLength);
+
+            binaryWriter.Write(jsonChunk.Length + jsonPadding);
+            binaryWriter.Write(CHUNKJSON);
+            binaryWriter.Write(jsonChunk);
+            for (int i = 0; i < jsonPadding; ++i) binaryWriter.Write((Byte)0x20);
+
+            if (buffer != null)
+            {
+                binaryWriter.Write(buffer.Length + binPadding);
+                binaryWriter.Write(CHUNKBIN);
+                binaryWriter.Write(buffer);
+                for (int i = 0; i < binPadding; ++i) binaryWriter.Write((Byte)0);
+            }
         }
 
         /// <summary>
